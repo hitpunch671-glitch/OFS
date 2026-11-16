@@ -11,6 +11,7 @@ from config import Settings
 from messages import (absorption_msg, close_msg, entry_msg, skip_msg, update_msg)
 from packet import Packet
 from state import State
+from symbols import get_profile, risk_multiplier, min_rr_for
 from tg_client import Telegram
 
 log = logging.getLogger("engine")
@@ -134,10 +135,11 @@ class Engine:
         else:
             risk = (entry - stop) if side == "LONG" else (stop - entry)
             reward = (target - entry) if side == "LONG" else (entry - target)
+            min_rr = min_rr_for(symbol, cfg.min_rr)
             if risk <= 0:
                 r.append("Stop en el lado equivocado de la entrada")
-            elif reward / risk < cfg.min_rr:
-                r.append(f"R:R 1:{reward / risk:.2f} < mínimo 1:{cfg.min_rr:g}")
+            elif reward / risk < min_rr:
+                r.append(f"R:R 1:{reward / risk:.2f} < mínimo 1:{min_rr:g} (perfil {get_profile(symbol)[0]})")
         return r
 
     # ------------------------------------------------------------------ entradas
@@ -162,7 +164,10 @@ class Engine:
 
         plan: Optional[Plan] = None
         if not reasons:
-            qty, risk_usd, capped = calc_size(equity, cfg.risk_pct, entry, stop, cfg.max_leverage, qty_prec, min_qty)
+            # Aplica multiplier de riesgo según el perfil del símbolo (Tier S/A/B/C)
+            mult = risk_multiplier(symbol)
+            effective_risk = cfg.risk_pct * mult
+            qty, risk_usd, capped = calc_size(equity, effective_risk, entry, stop, cfg.max_leverage, qty_prec, min_qty)
             if qty <= 0:
                 reasons.append("Tamaño calculado por debajo del mínimo del contrato")
             else:
@@ -170,7 +175,7 @@ class Engine:
                 plan = Plan(side=side, symbol=symbol, entry=entry, stop=stop, target=target,
                             target_src=str(pkt.trade("target_source") or "R"),
                             rr=abs(target - entry) / dist, qty=qty, risk_usd=risk_usd,
-                            risk_pct=cfg.risk_pct, risk_per_unit=dist, notional=qty * entry,
+                            risk_pct=effective_risk, risk_per_unit=dist, notional=qty * entry,
                             equity=equity, max_leverage=cfg.max_leverage, capped=capped)
 
         if plan is None:

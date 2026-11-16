@@ -85,7 +85,10 @@ class Settings:
             max_loss_streak=_i("MAX_LOSS_STREAK", 2),
             min_rr=_f("MIN_RR", 1.5),
             max_slippage_pct=_f("MAX_SLIPPAGE_PCT", 0.15),
-            allowed_symbols=tuple(x.strip().upper() for x in _env("ALLOWED_SYMBOLS", "BTC-USDT").split(",") if x.strip()),
+            allowed_symbols=tuple(x.strip().upper() for x in _env(
+                "ALLOWED_SYMBOLS",
+                "BTC-USDT,ETH-USDT,SOL-USDT,XRP-USDT,BNB-USDT,ZEC-USDT,HYPE-USDT,DOGE-USDT,NEAR-USDT,AVAX-USDT,SUI-USDT,LINK-USDT,AAVE-USDT"
+            ).split(",") if x.strip()),
             notify_absorption=_b("NOTIFY_ABSORPTION", True),
             notify_skips=_b("NOTIFY_SKIPS", True),
             data_dir=_env("DATA_DIR", "."),
